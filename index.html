@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CU EEE 1S CGPA CALCULATOR</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            margin: 0;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            color: #333;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+            margin: auto;
+            padding: 20px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            background-color: #fff;
+            border-radius: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        h2 {
+            color: #4682b4;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            color: #4682b4;
+        }
+
+        select, button, input {
+            margin: 10px 0;
+            padding: 10px;
+            width: calc(100% - 20px);
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #4682b4;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+
+        button:hover {
+            background-color: #357ab7;
+            transform: translateY(-2px);
+        }
+
+        #error {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #2e8b57;
+        }
+
+        .error {
+            color: #ff0000;
+            margin-top: 10px;
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/8.2.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.2.0/firebase-database.js"></script>
+    <script>
+        // Your web app's Firebase configuration
+        var firebaseConfig = {
+            apiKey: "AIzaSyBc_PkUcNGEq1P3RVCzEh-jCL_a5nungyQ",
+            authDomain: "cu-eee-1s-demo.firebaseapp.com",
+            databaseURL: "https://cu-eee-1s-demo-default-rtdb.firebaseio.com",
+            projectId: "cu-eee-1s-demo",
+            storageBucket: "cu-eee-1s-demo.appspot.com",
+            messagingSenderId: "831840435025",
+            appId: "1:831840435025:web:6ef18e8eec3f805563f170"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h2>CU EEE 1S CGPA CALCULATOR</h2>
+        <div id="result"></div>
+        <form id="cgpaForm">
+            <input type="text" id="roll" placeholder="Enter Roll Number" required>
+            <div id="invalidRoll" class="error"></div>
+            <div id="courses"></div>
+            <button type="button" onclick="calculateCGPA()">Calculate CGPA</button>
+        </form>
+    </div>
+    <script>
+        const courseList = [
+            { code: "EEE111", credit: 3 },
+            { code: "EEE112", credit: 2 },
+            { code: "CSE113", credit: 3 },
+            { code: "CSE114", credit: 1 },
+            { code: "ENG151", credit: 3 },
+            { code: "MATH161", credit: 3 },
+            { code: "PHY171", credit: 3 },
+            { code: "PHY172", credit: 1 },
+            { code: "EEE110", credit: 1 }
+        ];
+
+        const gradeScale = {
+            "A+": 4.00, "A": 3.75, "A-": 3.50,
+            "B+": 3.25, "B": 3.00, "B-": 2.75,
+            "C+": 2.50, "C": 2.25, "D": 2.00,
+            "F": 0.00
+        };
+
+        const studentNames = {
+            "24702001": "Ayesha Akter",
+            "24702002": "Lipy Barua",
+            "24702004": "Mosroor Shakib Ahanaf",
+            // ... other students
+            "23702010": "Md Nayem Uddin Nayan",
+            "23702051": "Nabiha Nowrin",
+            "23702055": "Sadia Sifat Rifa"
+        };
+
+        const courseContainer = document.getElementById("courses");
+
+        courseList.forEach(course => {
+            let label = document.createElement("label");
+            label.innerText = `${course.code}: `;
+            
+            let select = document.createElement("select");
+            select.innerHTML = "<option value=''>Select Grade</option>" + Object.keys(gradeScale).map(g => `<option value='${g}'>${g}</option>`).join("");
+            select.classList.add("grade");
+            select.setAttribute("data-credit", course.credit);
+            
+            courseContainer.appendChild(label);
+            courseContainer.appendChild(select);
+            courseContainer.appendChild(document.createElement("br"));
+        });
+
+        function calculateCGPA() {
+            let roll = document.getElementById("roll").value.trim();
+            let grades = document.querySelectorAll(".grade");
+            let invalidRollDiv = document.getElementById("invalidRoll");
+            let resultDiv = document.getElementById("result");
+
+            invalidRollDiv.innerText = "";
+            resultDiv.innerHTML = "";
+
+            if (!roll) {
+                invalidRollDiv.innerText = "Please enter your roll number.";
+                return;
+            }
+
+            if (!studentNames[roll]) {
+                invalidRollDiv.innerText = "Invalid roll number. Please try again with 2023-2024 Session roll from Dept. of Electrical & Electronic Engineering, University of Chittagong.";
+                return;
+            }
+
+            let totalPoints = 0, totalCredits = 0;
+            for (let select of grades) {
+                if (!select.value) {
+                    invalidRollDiv.innerText = "Please select grades for all courses.";
+                    return;
+                }
+                totalPoints += gradeScale[select.value] * parseFloat(select.getAttribute("data-credit"));
+                totalCredits += parseFloat(select.getAttribute("data-credit"));
+            }
+
+            let cgpa = totalCredits ? (totalPoints / totalCredits).toFixed(2) : "N/A";
+            let name = studentNames[roll];
+            let message = cgpa >= 2.25 
+                ? `Congratulations, ${name}! You will get promoted to the Second Semester. Good Luck!`
+                : `Sorry, ${name}. Please try again with higher grades.`;
+
+            resultDiv.innerHTML = `<p><strong>Roll:</strong> ${roll}</p>
+                                   <p><strong>Name:</strong> ${name}</p>
+                                   <p><strong>Predicted CGPA:</strong> ${cgpa}</p>
+                                   <p>${message}</p>`;
+
+            // Save data to Firebase
+            firebase.database().ref('entries').push({
+              roll: roll,
+              name: name,
+              cgpa: cgpa,
+              message: message
+            });
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
